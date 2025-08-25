@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小奕畅聊 - DeepSeek风格</title>
+    <meta name="description" content="基于DeepSeek R1的AI聊天应用，支持推理思考过程展示和流式输出">
+    <meta name="keywords" content="AI聊天,DeepSeek,OpenRouter,推理思考,流式输出,小奕畅聊">
+    <meta name="author" content="小奕畅聊">
+    <meta name="theme-color" content="#4285f4">
+    
+    <!-- PWA支持 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="小奕畅聊">
+    
+    <!-- 图标 -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='24' font-size='24'%3E🤖%3C/text%3E%3C/svg%3E">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="小奕畅聊 - AI聊天应用">
+    <meta property="og:description" content="基于DeepSeek R1的AI聊天应用，支持推理思考过程展示和流式输出">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 630'%3E%3Crect width='1200' height='630' fill='%234285f4'/%3E%3Ctext x='600' y='350' font-size='180' text-anchor='middle' fill='white'%3E小奕畅聊%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">🤖</div>
+                    <span class="logo-text">小奕畅聊</span>
+                </div>
+                <button class="new-chat-btn" onclick="startNewChat()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    新对话
+                </button>
+            </div>
+            
+            <div class="chat-history">
+                <div class="history-section">
+                    <div class="section-title">今天</div>
+                    <div class="chat-item active" onclick="selectChat(this)">
+                        <div class="chat-title">新的对话</div>
+                        <div class="chat-preview">开始一个新的对话...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="api-status">
+                    <div class="status-indicator" id="apiStatus"></div>
+                    <span class="status-text">OpenRouter API</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 顶部工具栏 -->
+            <header class="chat-header">
+                <div class="header-left">
+                    <h1 class="chat-title">DeepSeek R1</h1>
+                    <div class="model-info">通过 OpenRouter 提供支持</div>
+                </div>
+                <div class="header-right">
+                    <button class="settings-btn" onclick="toggleSettings()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- 聊天消息区域 -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-screen">
+                    <div class="welcome-icon">🚀</div>
+                    <h2>欢迎使用小奕畅聊</h2>
+                    <p>基于 DeepSeek R1 模型，通过 OpenRouter API 提供强大的AI对话能力</p>
+                    <div class="example-prompts">
+                        <div class="prompt-card" onclick="sendPrompt('你好，请介绍一下你自己')">
+                            <div class="prompt-icon">👋</div>
+                            <div class="prompt-text">你好，请介绍一下你自己</div>
+                        </div>
+                        <div class="prompt-card" onclick="sendPrompt('帮我写一个Python函数')">
+                            <div class="prompt-icon">🐍</div>
+                            <div class="prompt-text">帮我写一个Python函数</div>
+                        </div>
+                        <div class="prompt-card" onclick="sendPrompt('解释一下量子计算的基本原理')">
+                            <div class="prompt-icon">⚛️</div>
+                            <div class="prompt-text">解释一下量子计算的基本原理</div>
+                        </div>
+                        <div class="prompt-card" onclick="sendPrompt('创作一个短故事')">
+                            <div class="prompt-icon">📚</div>
+                            <div class="prompt-text">创作一个短故事</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="输入消息..." 
+                        rows="1"
+                        onkeydown="handleInputKeydown(event)"
+                        oninput="adjustTextareaHeight()"
+                    ></textarea>
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13"/>
+                            <path d="M22 2L15 22L11 13L2 9L22 2z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-footer">
+                    <div class="input-hints">
+                        <span>按 Enter 发送，Shift + Enter 换行</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 设置面板 -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-header">
+                <h3>设置</h3>
+                <button class="close-btn" onclick="toggleSettings()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6L18 18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label for="apiKey">OpenRouter API Key:</label>
+                    <input type="password" id="apiKey" placeholder="输入你的 OpenRouter API Key">
+                    <button class="save-key-btn" onclick="saveApiKey()">保存</button>
+                </div>
+                <div class="setting-item">
+                    <label for="siteUrl">网站URL (可选):</label>
+                    <input type="text" id="siteUrl" placeholder="https://yoursite.com">
+                </div>
+                <div class="setting-item">
+                    <label for="siteName">网站名称 (可选):</label>
+                    <input type="text" id="siteName" placeholder="Your Site Name">
+                </div>
+                <div class="setting-item">
+                    <label class="setting-toggle">
+                        <input type="checkbox" id="showThinking" checked>
+                        <span class="toggle-slider"></span>
+                        显示AI推理思考过程
+                    </label>
+                    <div class="setting-description">展示DeepSeek R1模型的内部推理思考过程</div>
+                </div>
+                <div class="setting-item">
+                    <label class="setting-toggle">
+                        <input type="checkbox" id="enableStreaming" checked>
+                        <span class="toggle-slider"></span>
+                        启用流式输出
+                    </label>
+                    <div class="setting-description">实时显示AI回复内容，获得更好的交互体验</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
