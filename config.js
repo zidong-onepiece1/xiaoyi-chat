@@ -3,7 +3,7 @@
 
 const APP_CONFIG = {
     // 方案一：直接配置默认密钥（简单但不够安全）
-    DEFAULT_API_KEY: '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',
+    DEFAULT_API_KEY: '7697e990f47ef726904f360943bff36a857b',
     
     // 方案二：环境变量（推荐用于服务器部署）
     // DEFAULT_API_KEY: window.ENV?.OPENROUTER_API_KEY || '',

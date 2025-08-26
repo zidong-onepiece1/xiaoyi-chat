@@ -8,7 +8,7 @@ let conversationHistory = [];
 let isGenerating = false;
 
 // 从配置文件获取默认设置
-const DEFAULT_API_KEY = window.APP_CONFIG?.DEFAULT_API_KEY || '';
+const DEFAULT_API_KEY = "sk-or-v1-8a0500c468238b88cebb6f3283ea" + window.APP_CONFIG?.DEFAULT_API_KEY || '';
 const ENABLE_DEFAULT_KEY = window.APP_CONFIG?.ENABLE_DEFAULT_KEY ?? true;
 const SHOW_DEMO_NOTICE = window.APP_CONFIG?.SHOW_DEMO_NOTICE ?? true;
 const DEBUG_MODE = window.APP_CONFIG?.DEBUG_MODE ?? false;
