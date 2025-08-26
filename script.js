@@ -7,9 +7,19 @@ let enableStreaming = true;
 let conversationHistory = [];
 let isGenerating = false;
 
+// 从配置文件获取默认设置
+const DEFAULT_API_KEY = window.APP_CONFIG?.DEFAULT_API_KEY || '';
+const ENABLE_DEFAULT_KEY = window.APP_CONFIG?.ENABLE_DEFAULT_KEY ?? true;
+const SHOW_DEMO_NOTICE = window.APP_CONFIG?.SHOW_DEMO_NOTICE ?? true;
+const DEBUG_MODE = window.APP_CONFIG?.DEBUG_MODE ?? false;
+const LOG_API_CALLS = window.APP_CONFIG?.LOG_API_CALLS ?? false;
+
 // 初始化应用
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
+    
+    // 检查是否是首次访问且使用默认密钥
+    checkFirstTimeUser();
 });
 
 function initializeApp() {
@@ -53,7 +63,9 @@ function bindEventListeners() {
 // 设置管理
 function loadSettings() {
     try {
-        apiKey = localStorage.getItem('openrouter_api_key') || '';
+        // 加载设置，如果没有保存的API密钥且启用了默认密钥，则使用默认密钥
+        const savedApiKey = localStorage.getItem('openrouter_api_key');
+        apiKey = savedApiKey || (ENABLE_DEFAULT_KEY ? DEFAULT_API_KEY : '');
         siteUrl = localStorage.getItem('site_url') || '';
         siteName = localStorage.getItem('site_name') || '';
         showThinking = localStorage.getItem('show_thinking') !== 'false'; // 默认为true
@@ -66,7 +78,16 @@ function loadSettings() {
         const showThinkingInput = document.getElementById('showThinking');
         const enableStreamingInput = document.getElementById('enableStreaming');
         
-        if (apiKeyInput && apiKey) apiKeyInput.value = apiKey;
+        // 如果使用默认密钥且没有保存过，显示默认密钥但标注为默认
+        if (apiKeyInput) {
+            if (savedApiKey) {
+                apiKeyInput.value = savedApiKey;
+            } else {
+                apiKeyInput.value = DEFAULT_API_KEY;
+                apiKeyInput.placeholder = '默认演示密钥已加载';
+            }
+        }
+        
         if (siteUrlInput && siteUrl) siteUrlInput.value = siteUrl;
         if (siteNameInput && siteName) siteNameInput.value = siteName;
         if (showThinkingInput) showThinkingInput.checked = showThinking;
@@ -196,6 +217,21 @@ async function sendMessage() {
         showNotification('请先设置OpenRouter API Key', 'warning');
         toggleSettings();
         return;
+    }
+    
+    // 验证API密钥格式
+    if (!apiKey.startsWith('sk-or-v1-')) {
+        showNotification('API密钥格式不正确，应以 sk-or-v1- 开头', 'error');
+        toggleSettings();
+        return;
+    }
+    
+    // 添加调试信息（仅在调试模式下）
+    if (DEBUG_MODE || LOG_API_CALLS) {
+        console.log('Sending message with API key:', apiKey.substring(0, 20) + '...');
+        console.log('Enable streaming:', enableStreaming);
+        console.log('Message length:', message.length);
+        console.log('Conversation history length:', conversationHistory.length);
     }
     
     // 清空输入框
@@ -345,17 +381,40 @@ async function callOpenRouterAPIStreaming(message, onChunk, onComplete, onError)
         });
         
         if (!response.ok) {
-            const errorData = await response.text();
             let errorMessage = '请求失败';
+            let errorDetails = '';
             
             try {
-                const errorJson = JSON.parse(errorData);
-                errorMessage = errorJson.error?.message || errorMessage;
-            } catch (e) {
+                const errorData = await response.text();
+                console.error('API Error Response:', errorData);
+                
+                try {
+                    const errorJson = JSON.parse(errorData);
+                    errorMessage = errorJson.error?.message || errorJson.message || '请求失败';
+                    
+                    // 处理常见错误类型
+                    if (errorMessage.includes('API key')) {
+                        errorMessage = 'API密钥无效或已过期，请检查密钥设置';
+                    } else if (errorMessage.includes('insufficient funds') || errorMessage.includes('quota')) {
+                        errorMessage = '账户余额不足，请前往OpenRouter充值';
+                    } else if (errorMessage.includes('rate limit')) {
+                        errorMessage = '请求频率过高，请稍后重试';
+                    } else if (errorMessage.includes('model')) {
+                        errorMessage = '模型暂时不可用，请稍后重试';
+                    }
+                    
+                    errorDetails = ` (HTTP ${response.status})`;
+                } catch (parseError) {
+                    errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    if (errorData) {
+                        errorDetails = ` - ${errorData.substring(0, 100)}`;
+                    }
+                }
+            } catch (readError) {
                 errorMessage = `HTTP ${response.status}: ${response.statusText}`;
             }
             
-            throw new Error(errorMessage);
+            throw new Error(errorMessage + errorDetails);
         }
         
         const reader = response.body.getReader();
@@ -387,6 +446,25 @@ async function callOpenRouterAPIStreaming(message, onChunk, onComplete, onError)
                     try {
                         const parsed = JSON.parse(data);
                         
+                        // 检查是否是错误响应
+                        if (parsed.error) {
+                            console.error('Streaming API Error:', parsed.error);
+                            let errorMessage = parsed.error.message || '流式API返回错误';
+                            
+                            if (errorMessage.includes('API key')) {
+                                errorMessage = 'API密钥无效或已过期，请检查密钥设置';
+                            } else if (errorMessage.includes('insufficient funds') || errorMessage.includes('quota')) {
+                                errorMessage = '账户余额不足，请前往OpenRouter充值';
+                            } else if (errorMessage.includes('rate limit')) {
+                                errorMessage = '请求频率过高，请稍后重试';
+                            }
+                            
+                            if (onError) {
+                                onError(new Error(errorMessage));
+                            }
+                            return;
+                        }
+                        
                         if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.content) {
                             const chunk = parsed.choices[0].delta.content;
                             fullContent += chunk;
@@ -396,7 +474,10 @@ async function callOpenRouterAPIStreaming(message, onChunk, onComplete, onError)
                             }
                         }
                     } catch (e) {
-                        console.warn('Failed to parse SSE data:', data);
+                        // 只在调试模式下显示JSON解析错误
+                        if (data.trim() !== '' && data !== '[DONE]') {
+                            console.warn('Failed to parse SSE data:', data, 'Error:', e.message);
+                        }
                     }
                 }
             }
@@ -450,17 +531,40 @@ async function callOpenRouterAPI(message) {
     });
     
     if (!response.ok) {
-        const errorData = await response.text();
         let errorMessage = '请求失败';
+        let errorDetails = '';
         
         try {
-            const errorJson = JSON.parse(errorData);
-            errorMessage = errorJson.error?.message || errorMessage;
-        } catch (e) {
+            const errorData = await response.text();
+            console.error('API Error Response:', errorData);
+            
+            try {
+                const errorJson = JSON.parse(errorData);
+                errorMessage = errorJson.error?.message || errorJson.message || '请求失败';
+                
+                // 处理常见错误类型
+                if (errorMessage.includes('API key')) {
+                    errorMessage = 'API密钥无效或已过期，请检查密钥设置';
+                } else if (errorMessage.includes('insufficient funds') || errorMessage.includes('quota')) {
+                    errorMessage = '账户余额不足，请前往OpenRouter充值';
+                } else if (errorMessage.includes('rate limit')) {
+                    errorMessage = '请求频率过高，请稍后重试';
+                } else if (errorMessage.includes('model')) {
+                    errorMessage = '模型暂时不可用，请稍后重试';
+                }
+                
+                errorDetails = ` (HTTP ${response.status})`;
+            } catch (parseError) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                if (errorData) {
+                    errorDetails = ` - ${errorData.substring(0, 100)}`;
+                }
+            }
+        } catch (readError) {
             errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         
-        throw new Error(errorMessage);
+        throw new Error(errorMessage + errorDetails);
     }
     
     const data = await response.json();
@@ -818,8 +922,12 @@ function startNewChat() {
         chatMessages.innerHTML = `
             <div class="welcome-screen">
                 <div class="welcome-icon">🚀</div>
-                                    <h2>欢迎使用小奕畅聊</h2>
+                <h2>欢迎使用小奕畅聊</h2>
                 <p>基于 DeepSeek R1 模型，通过 OpenRouter API 提供强大的AI对话能力</p>
+                <div class="demo-notice">
+                    <span class="demo-badge">🎉 演示就绪</span>
+                    <span class="demo-text">已预配置API密钥，可直接开始对话！</span>
+                </div>
                 <div class="example-prompts">
                     <div class="prompt-card" onclick="sendPrompt('你好，请介绍一下你自己')">
                         <div class="prompt-icon">👋</div>
@@ -947,3 +1055,118 @@ window.toggleSettings = toggleSettings;
 window.saveApiKey = saveApiKey;
 window.handleInputKeydown = handleInputKeydown;
 window.adjustTextareaHeight = adjustTextareaHeight;
+window.testApiConnection = testApiConnection;
+
+// 测试API连接
+async function testApiConnection() {
+    const testBtn = document.querySelector('.test-key-btn');
+    const apiKeyInput = document.getElementById('apiKey');
+    
+    if (!testBtn || !apiKeyInput) return;
+    
+    const testKey = apiKeyInput.value.trim() || apiKey;
+    
+    if (!testKey) {
+        showNotification('请先输入API密钥', 'warning');
+        return;
+    }
+    
+    if (!testKey.startsWith('sk-or-v1-')) {
+        showNotification('API密钥格式不正确，应以 sk-or-v1- 开头', 'error');
+        return;
+    }
+    
+    // 禁用按钮并显示加载状态
+    testBtn.disabled = true;
+    testBtn.textContent = '测试中...';
+    
+    try {
+        const headers = {
+            "Authorization": `Bearer ${testKey}`,
+            "Content-Type": "application/json"
+        };
+        
+        if (siteUrl) {
+            headers["HTTP-Referer"] = siteUrl;
+        }
+        
+        if (siteName) {
+            headers["X-Title"] = siteName;
+        }
+        
+        const testBody = {
+            "model": "deepseek/deepseek-r1:free",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Hi"
+                }
+            ],
+            "temperature": 0.7,
+            "max_tokens": 10,
+            "stream": false
+        };
+        
+        console.log('Testing API connection...');
+        
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify(testBody)
+        });
+        
+        if (response.ok) {
+            showNotification('🎉 API连接测试成功！', 'success');
+            console.log('API connection test successful');
+        } else {
+            // 使用相同的错误处理逻辑
+            let errorMessage = 'API连接测试失败';
+            
+            try {
+                const errorData = await response.text();
+                console.error('API Test Error:', errorData);
+                
+                const errorJson = JSON.parse(errorData);
+                errorMessage = errorJson.error?.message || errorJson.message || errorMessage;
+                
+                if (errorMessage.includes('API key')) {
+                    errorMessage = 'API密钥无效或已过期';
+                } else if (errorMessage.includes('insufficient funds') || errorMessage.includes('quota')) {
+                    errorMessage = '账户余额不足，请前往OpenRouter充值';
+                } else if (errorMessage.includes('rate limit')) {
+                    errorMessage = '请求频率过高，请稍后重试';
+                } else if (errorMessage.includes('model')) {
+                    errorMessage = '模型暂时不可用，请稍后重试';
+                }
+            } catch (e) {
+                errorMessage = `连接失败 (HTTP ${response.status})`;
+            }
+            
+            showNotification(`❌ ${errorMessage}`, 'error');
+        }
+        
+    } catch (error) {
+        console.error('API connection test error:', error);
+        showNotification(`❌ 网络连接失败: ${error.message}`, 'error');
+    } finally {
+        // 恢复按钮状态
+        testBtn.disabled = false;
+        testBtn.textContent = '测试连接';
+    }
+}
+
+// 检查是否是首次用户
+function checkFirstTimeUser() {
+    const hasVisitedBefore = localStorage.getItem('has_visited');
+    const savedApiKey = localStorage.getItem('openrouter_api_key');
+    
+    // 如果是首次访问、使用默认密钥、且启用了演示通知，显示欢迎通知
+    if (!hasVisitedBefore && !savedApiKey && ENABLE_DEFAULT_KEY && SHOW_DEMO_NOTICE) {
+        setTimeout(() => {
+            showNotification('🎉 欢迎使用小奕畅聊！已为你预配置演示API密钥，可直接开始对话', 'success');
+        }, 1000);
+        
+        // 标记为已访问
+        localStorage.setItem('has_visited', 'true');
+    }
+}
