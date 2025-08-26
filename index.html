@@ -29,6 +29,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="config.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -89,6 +90,10 @@
                     <div class="welcome-icon">🚀</div>
                     <h2>欢迎使用小奕畅聊</h2>
                     <p>基于 DeepSeek R1 模型，通过 OpenRouter API 提供强大的AI对话能力</p>
+                    <div class="demo-notice">
+                        <span class="demo-badge">🎉 演示就绪</span>
+                        <span class="demo-text">已预配置API密钥，可直接开始对话！</span>
+                    </div>
                     <div class="example-prompts">
                         <div class="prompt-card" onclick="sendPrompt('你好，请介绍一下你自己')">
                             <div class="prompt-icon">👋</div>
@@ -149,7 +154,17 @@
                 <div class="setting-item">
                     <label for="apiKey">OpenRouter API Key:</label>
                     <input type="password" id="apiKey" placeholder="输入你的 OpenRouter API Key">
-                    <button class="save-key-btn" onclick="saveApiKey()">保存</button>
+                    <div class="api-key-actions">
+                        <button class="save-key-btn" onclick="saveApiKey()">保存</button>
+                        <button class="test-key-btn" onclick="testApiConnection()">测试连接</button>
+                    </div>
+                    <div class="api-key-notice">
+                        <div class="notice-icon">ℹ️</div>
+                        <div class="notice-text">
+                            <strong>默认演示密钥已预配置</strong><br>
+                            你可以直接开始对话，或输入自己的API密钥
+                        </div>
+                    </div>
                 </div>
                 <div class="setting-item">
                     <label for="siteUrl">网站URL (可选):</label>

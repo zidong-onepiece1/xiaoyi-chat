@@ -283,8 +283,34 @@ body {
 .welcome-screen p {
     font-size: 16px;
     color: var(--text-secondary);
-    margin-bottom: 32px;
+    margin-bottom: 16px;
     max-width: 500px;
+}
+
+.demo-notice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 32px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, rgba(66, 133, 244, 0.1), rgba(139, 92, 246, 0.1));
+    border: 1px solid rgba(66, 133, 244, 0.3);
+    border-radius: var(--radius-xl);
+    backdrop-filter: blur(10px);
+}
+
+.demo-badge {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-color);
+    text-shadow: 0 0 10px rgba(66, 133, 244, 0.3);
+}
+
+.demo-text {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-align: center;
 }
 
 .example-prompts {
@@ -681,20 +707,46 @@ body {
     box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
 }
 
-.save-key-btn {
+.api-key-actions {
+    display: flex;
+    gap: 8px;
     margin-top: 8px;
+}
+
+.save-key-btn, .test-key-btn {
     padding: 8px 16px;
-    background-color: var(--accent-color);
-    color: white;
     border: none;
     border-radius: var(--radius-md);
     font-size: 12px;
     cursor: pointer;
     transition: all var(--transition-fast);
+    font-weight: 500;
 }
 
-.save-key-btn:hover {
+.save-key-btn {
+    background-color: var(--accent-color);
+    color: white;
+    flex: 1;
+}
+
+.save-key-btn:hover:not(:disabled) {
     background-color: var(--accent-hover);
+}
+
+.test-key-btn {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.test-key-btn:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+    border-color: var(--accent-color);
+}
+
+.save-key-btn:disabled, .test-key-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* 设置开关样式 */
@@ -754,6 +806,35 @@ body {
     color: var(--text-tertiary);
     margin-top: 4px;
     padding-left: 56px;
+}
+
+/* API密钥通知样式 */
+.api-key-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 12px;
+    background-color: rgba(66, 133, 244, 0.1);
+    border: 1px solid rgba(66, 133, 244, 0.3);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+}
+
+.notice-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.notice-text {
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.notice-text strong {
+    color: var(--accent-color);
+    font-weight: 600;
 }
 
 /* 响应式设计 */
